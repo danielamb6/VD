@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inicio de Sesión | Admin Incidencias</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* PALETA DE COLORES DEL DASHBOARD */
+        :root {
+            --primary-blue: #1a2980;
+            --secondary-blue: #26d0ce;
+            --accent-color: #AB096A; /* Color Vino/Magenta */
+            --accent-hover: #8A0755;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            font-family: "Arial", sans-serif; 
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            /* Fondo degradado igual al Dashboard */
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: white;
+            width: 400px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            text-align: center;
+            /* Borde superior con el color de acento */
+            border-top: 5px solid var(--accent-color);
+        }
+
+        .logo-container {
+            margin-bottom: 25px;
+        }
+
+        .logo-container img {
+            max-width: 180px;
+            height: auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--accent-color);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-login:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        .btn-login:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .footer-text {
+            margin-top: 25px;
+            font-size: 0.85rem;
+            color: #95a5a6;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: none;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="logo-container">
+            <img src="Sistema de incidencias.png" alt="Logo Empresa" width="200" onerror="this.style.display='none'; this.parentElement.innerHTML='<h2 style=\'color:#1a2980\'>Sistema Incidencias</h2>'">
+        </div>
+
+        <div class="error" id="error-msg"></div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label>Usuario</label>
+                <input type="text" id="username" placeholder="Ingresa tu usuario" required>
+            </div>
+
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="password" placeholder="********" required>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Ingresar
+            </button>
+        </form>
+
+        <div style="margin-top: 15px; text-align: center;">
+            <a href="recuperacion.html" style="color: #1a2980; text-decoration: none; font-size: 0.9rem;">
+                ¿Olvidaste tu contraseña? Recuperar aquí
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://192.168.1.53:5000/api/login';
+
+        document.getElementById("login-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+            const errorMsg = document.getElementById("error-msg");
+            const btn = document.querySelector(".btn-login");
+
+            // UI de carga
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            btn.disabled = true;
+            errorMsg.style.display = "none";
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Login exitoso
+                    // Guardamos la sesión (opcionalmente el objeto completo del usuario)
+                    localStorage.setItem('adminUser', JSON.stringify(data.usuario));
+                    // Redirección al Dashboard
+                    window.location.href = "index2.html";
+                } else {
+                    // Mostrar error del backend
+                    errorMsg.innerText = data.error || "Credenciales incorrectas";
+                    errorMsg.style.display = "block";
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error(error);
+                errorMsg.innerText = "Error de conexión con el servidor (app.py)";
+                errorMsg.style.display = "block";
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Ingresar';
+                btn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+</html>

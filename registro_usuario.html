@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Usuarios | Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        :root {
+            /* PALETA UNIFICADA */
+            --primary-blue: #1a2980;
+            --secondary-blue: #26d0ce;
+            --accent-color: #AB096A;
+            --accent-hover: #8A0755;
+            --bg-color: #f4f6f9;
+            --white: #ffffff;
+            --border-color: #dee2e6;
+            --success: #27ae60;
+            --danger: #c0392b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* HEADER CON BOTONES */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .header-title {
+            color: var(--primary-blue);
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Botón Dashboard */
+        .btn-dashboard {
+            background-color: var(--white);
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none; /* Para que funcione como link */
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-dashboard:hover {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+
+        /* Tarjetas */
+        .card {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            padding: 30px;
+            margin-bottom: 30px;
+            border-top: 5px solid var(--accent-color);
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .card-header-text {
+            color: var(--primary-blue);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        /* Formulario Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        label span.required { color: var(--accent-color); }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+            background-color: #fff;
+            box-sizing: border-box;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(171, 9, 106, 0.1);
+        }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 5px;
+            display: block;
+        }
+
+        /* Botones Formulario */
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f1f1;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-cancel:hover { background-color: #5a6268; }
+
+        .btn-save {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #8A0755 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(171, 9, 106, 0.3); }
+
+        /* Tabla */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: linear-gradient(135deg, rgba(26, 41, 128, 0.05) 0%, rgba(171, 9, 106, 0.05) 100%); }
+        th {
+            text-align: left; padding: 18px 15px;
+            color: var(--primary-blue); font-weight: 700;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        td {
+            padding: 15px; border-bottom: 1px solid #eee;
+            vertical-align: middle; color: #555;
+        }
+        tr:hover { background-color: #fdfdfd; }
+
+        /* Badges y Botones de Tabla */
+        .badge-role {
+            background: var(--primary-blue);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-transform: capitalize;
+        }
+        .badge-admin { background: var(--accent-color); }
+
+        .status-active { color: var(--success); font-weight: bold; font-size: 0.9rem; }
+        .status-inactive { color: var(--danger); font-weight: bold; font-size: 0.9rem; }
+
+        /* Botón de cambio de estado */
+        .btn-toggle {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: #555;
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-toggle:hover {
+            background-color: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+        /* Estilo para botón activo/inactivo visual */
+        .btn-toggle.active-state { color: var(--success); border-color: var(--success); }
+        .btn-toggle.inactive-state { color: var(--danger); border-color: var(--danger); }
+
+        @media (max-width: 992px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .header-container { flex-direction: column; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="header-title">
+            <i class="fas fa-users-cog"></i> Registro de Usuarios
+        </div>
+        <a href="index2.html" class="btn-dashboard">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header-text">
+            <i class="fas fa-user-edit"></i> Información del Usuario
+        </div>
+
+        <form id="usuarioForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nombre Completo <span class="required">*</span></label>
+                    <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Correo Electrónico <span class="required">*</span></label>
+                    <input type="email" id="email" placeholder="usuario@admin.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Rol <span class="required">*</span></label>
+                    <select id="rol" required>
+                        <option value="">Seleccionar rol</option>
+                        <option value="administrador">Administrador</option>
+                        <option value="supervisor">Supervisor</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre de Usuario <span class="required">*</span></label>
+                    <input type="text" id="username" placeholder="Ej: jperez" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña <span class="required">*</span></label>
+                    <input type="password" id="password" placeholder="********" required>
+                    <span class="input-hint"><i class="fas fa-info-circle"></i> Mínimo 8 caracteres</span>
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmar Contraseña <span class="required">*</span></label>
+                    <input type="password" id="confirmPassword" placeholder="Repite la contraseña" required>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-cancel" onclick="document.getElementById('usuarioForm').reset()">Cancelar</button>
+                <button type="submit" class="btn btn-save">
+                    <i class="fas fa-save"></i> Guardar usuario
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="card-header-text" style="margin-bottom: 0; border: none;">
+                <i class="fas fa-list"></i> Usuarios Registrados
+            </div>
+            <button class="btn btn-cancel" onclick="cargarUsuarios()" style="padding: 8px 15px; font-size: 0.8rem;">
+                <i class="fas fa-sync"></i> Refrescar
+            </button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        <th style="text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaUsuarios">
+                    <tr><td colspan="6" style="text-align: center;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://192.168.1.53:5000/api/admin';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            cargarUsuarios();
+
+            document.getElementById('usuarioForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const p1 = document.getElementById('password').value;
+                const p2 = document.getElementById('confirmPassword').value;
+
+                if (p1 !== p2) { alert("Las contraseñas no coinciden"); return; }
+
+                const data = {
+                    nombre: document.getElementById('nombre').value,
+                    email: document.getElementById('email').value,
+                    rol: document.getElementById('rol').value,
+                    username: document.getElementById('username').value,
+                    password: p1
+                };
+
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                    if (res.ok) {
+                        alert("Usuario registrado correctamente");
+                        document.getElementById('usuarioForm').reset();
+                        cargarUsuarios();
+                    } else {
+                        const err = await res.json();
+                        alert("Error: " + (err.error || "Desconocido"));
+                    }
+                } catch (error) { alert("Error de conexión"); }
+            });
+        });
+
+        async function cargarUsuarios() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Error API");
+                
+                const usuarios = await res.json();
+                const tbody = document.getElementById('tablaUsuarios');
+                tbody.innerHTML = '';
+
+                if (usuarios.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay usuarios.</td></tr>';
+                    return;
+                }
+
+                usuarios.forEach(u => {
+                    // Concatenamos nombre y apellido
+                    const nombreCompleto = `${u.nombre} ${u.primer_apellido || ''} ${u.segundo_apellido || ''}`;
+                    
+                    const rolClass = u.rol === 'administrador' ? 'badge-role badge-admin' : 'badge-role';
+                    const estadoText = u.activo ? '<span class="status-active"><i class="fas fa-check-circle"></i> Activo</span>' : '<span class="status-inactive"><i class="fas fa-times-circle"></i> Inactivo</span>';
+                    
+                    // Botón de Acción (Toggle)
+                    const btnColor = u.activo ? '#c0392b' : '#27ae60'; // Rojo para desactivar, Verde para activar
+                    const btnIcon = u.activo ? 'fa-ban' : 'fa-check';
+                    const btnTitle = u.activo ? 'Desactivar Usuario' : 'Activar Usuario';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${nombreCompleto}</td>
+                            <td><strong>${u.usuario}</strong></td>
+                            <td>${u.correo}</td>
+                            <td><span class="${rolClass}">${u.rol}</span></td>
+                            <td>${estadoText}</td>
+                            <td style="text-align: center;">
+                                <button onclick="cambiarEstado(${u.id})" style="background:${btnColor}; color:white; border:none; padding:8px 12px; border-radius:5px; cursor:pointer;" title="${btnTitle}">
+                                    <i class="fas ${btnIcon}"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch (error) {
+                document.getElementById('tablaUsuarios').innerHTML = 
+                    '<tr><td colspan="6" style="text-align: center; color: red;">Error cargando usuarios. Verifica app.py.</td></tr>';
+            }
+        }
+
+        async function cambiarEstado(id) {
+            if(!confirm("¿Cambiar estado del usuario?")) return;
+            try {
+                const res = await fetch(`${API_URL}/${id}/estado`, { method: 'PUT' });
+                if (res.ok) cargarUsuarios();
+                else alert("Error al cambiar estado");
+            } catch (error) { alert("Error de conexión"); }
+        }
+    </script>
+</body>
+</html>

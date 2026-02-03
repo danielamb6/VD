@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Insitra</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* ESTILOS CORE */
+        :root {
+            --primary-dark: #0f1c55;
+            --primary-blue: #1a2980;
+            --accent-color: #AB096A;
+            --bg-light: #f4f7fc;
+            --white: #ffffff;
+            --text-grey: #555;
+            
+            /* COLORES ESTADOS ACTUALIZADOS */
+            --st-abierto: #e74c3c;    /* Rojo */
+            --st-espera: #f39c12;     /* Naranja */
+            --st-atencion: #f1c40f;   /* Amarillo */
+            --st-resuelto: #27ae60;   /* Verde */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-light); min-height: 100vh; display: flex; }
+
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: linear-gradient(180deg, var(--primary-blue) 0%, var(--primary-dark) 100%); color: white; position: fixed; height: 100%; z-index: 100; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
+        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .menu-item { padding: 16px 25px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.95rem; border-left: 4px solid transparent; }
+        .menu-item:hover, .menu-item.active { background-color: rgba(255,255,255,0.1); color: white; border-left-color: var(--accent-color); }
+
+        /* MAIN CONTENT */
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding: 40px; }
+        h1.section-title { color: var(--primary-dark); margin-bottom: 30px; font-weight: 700; position: relative; padding-bottom: 15px; border-bottom: 4px solid var(--accent-color); display: inline-block; }
+
+        /* KPI & CARDS */
+        .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; margin-bottom: 40px; }
+        .kpi-card { background: var(--white); padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; }
+        .kpi-content h3 { font-size: 0.9rem; color: var(--text-grey); margin-bottom: 10px; text-transform: uppercase; }
+        .kpi-content .number { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+        .kpi-icon { font-size: 3.5rem; opacity: 0.15; position: absolute; right: 20px; bottom: 15px; }
+        
+        /* ESTADOS KPI */
+        .card-total { border-bottom: 4px solid var(--primary-blue); } .card-total .number { color: var(--primary-blue); }
+        .card-abierto { background: linear-gradient(135deg, #fff 60%, #ffebee 100%); border-bottom: 4px solid var(--st-abierto); } .card-abierto .number { color: var(--st-abierto); }
+        .card-atencion { background: linear-gradient(135deg, #fff 60%, #fff9c4 100%); border-bottom: 4px solid var(--st-atencion); } .card-atencion .number { color: #d4ac0d; } /* Color texto oscuro para amarillo */
+        .card-resuelto { background: linear-gradient(135deg, #fff 60%, #e8f5e9 100%); border-bottom: 4px solid var(--st-resuelto); } .card-resuelto .number { color: var(--st-resuelto); }
+
+        /* TABLAS Y BADGES */
+        .table-container { background: var(--white); border-radius: 15px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.05); padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; color: var(--primary-dark); padding: 15px; text-align: left; font-weight: 700; border-bottom: 2px solid #eee; }
+        td { padding: 15px; border-bottom: 1px solid #eee; color: #555; vertical-align: middle; }
+        
+        .badge-estado { padding: 5px 10px; border-radius: 15px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; border: 1px solid transparent; }
+        .bdg-abierto { background: #ffebee; color: var(--st-abierto); border-color: #ffcdd2; }
+        .bdg-espera_refaccion { background: #fff3e0; color: var(--st-espera); border-color: #ffe0b2; }
+        .bdg-en_atencion { background: #fffde7; color: #bc9e0a; border-color: #fff9c4; }
+        .bdg-resuelto { background: #e8f5e9; color: var(--st-resuelto); border-color: #c8e6c9; }
+
+        /* BOTONES ACTIVO / INACTIVO */
+        .badge-activo { background-color: var(--st-resuelto); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .badge-inactivo { background-color: var(--st-abierto); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+
+        /* FILTROS */
+        .filters-bar { background: var(--white); padding: 20px; border-radius: 15px; margin-bottom: 30px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; box-shadow: 0 5px 15px rgba(0,0,0,0.03); }
+        .filter-group { flex: 1; min-width: 150px; }
+        .filter-group label { font-size: 0.85rem; font-weight: 600; color: var(--primary-dark); display: block; margin-bottom: 5px; }
+        .filter-group select, .filter-group input { width: 100%; padding: 10px; border: 1px solid #dde2ec; border-radius: 8px; font-size: 0.9rem; }
+        .btn-limpiar { padding: 10px 20px; background-color: var(--primary-blue); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: auto; }
+        .status-select { padding: 8px; border-radius: 8px; border: 1px solid #ddd; font-weight: 600; width: 100%; cursor: pointer; }
+
+        /* CATÁLOGOS TABS */
+        .tech-tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .tech-tab { padding: 10px 20px; background: var(--white); border: 1px solid #dde2ec; border-radius: 20px; cursor: pointer; color: var(--text-grey); font-weight: 600; white-space: nowrap; transition: 0.3s; }
+        .tech-tab.active { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+        .btn-agregar { padding: 10px 20px; background: var(--accent-color); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; }
+
+        .view-section { display: none; animation: fadeIn 0.4s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* ESTILOS REPORTE */
+        .chart-row { display: flex; gap: 20px; margin-bottom: 30px; align-items: flex-start; }
+        .chart-box { flex: 1; border: 1px solid #eee; padding: 15px; border-radius: 8px; }
+        .report-h2 { color:var(--primary-blue); border-bottom: 1px solid #eee; margin-bottom: 15px; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header"><h3>INSITRA ADMIN</h3></div>
+        <div style="padding-top: 20px;">
+            <a class="menu-item active" onclick="mostrarVista('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a class="menu-item" onclick="mostrarVista('incidencias')"><i class="fas fa-ticket-alt"></i> Incidencias</a>
+            <a class="menu-item" onclick="mostrarVista('reportes')"><i class="fas fa-file-pdf"></i> Reportes</a>
+            <a class="menu-item" onclick="mostrarVista('gestion-tecnica')"><i class="fas fa-cogs"></i> Catálogos</a>
+            <a class="menu-item" onclick="mostrarVista('tecnicos')"><i class="fas fa-user-cog"></i> Técnicos</a>
+            <a class="menu-item" onclick="mostrarVista('clientes')"><i class="fas fa-building"></i> Clientes</a>
+            <a class="menu-item" onclick="window.location.href='registro_usuario.html'"><i class="fas fa-user-plus"></i> Usuarios</a>
+        </div>
+        <div style="position: absolute; bottom: 20px; width: 100%; padding: 0 20px;">
+            <button onclick="window.location.href='login.html'" style="width:100%; padding:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; cursor:pointer; border-radius:8px;">Cerrar Sesión</button>
+       </div>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="dashboard" class="view-section active">
+            <h1 class="section-title">Dashboard General</h1>
+            <div class="kpi-container">
+                <div class="kpi-card card-total"><div class="kpi-content"><h3>Total Tickets</h3><div class="number" id="kpi-total">0</div></div><i class="fas fa-clipboard-list kpi-icon"></i></div>
+                <div class="kpi-card card-abierto"><div class="kpi-content"><h3>Abiertos</h3><div class="number" id="kpi-abiertos">0</div></div><i class="fas fa-exclamation-circle kpi-icon"></i></div>
+                <div class="kpi-card card-atencion"><div class="kpi-content"><h3>En Atención</h3><div class="number" id="kpi-atencion">0</div></div><i class="fas fa-tools kpi-icon"></i></div>
+                <div class="kpi-card card-resuelto"><div class="kpi-content"><h3>Resueltos</h3><div class="number" id="kpi-resueltos">0</div></div><i class="fas fa-check-circle kpi-icon"></i></div>
+            </div>
+            <div class="table-container">
+                <h3>Últimos Tickets (Resumen)</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>ID</th><th>Empresa</th><th>Falla</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead>
+                        <tbody id="tabla-dashboard-resumen"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="reportes" class="view-section">
+            <h1 class="section-title">Generador de Reportes</h1>
+            <div class="filters-bar">
+                <div class="filter-group"><label>Desde</label><input type="date" id="rep-f-ini"></div>
+                <div class="filter-group"><label>Hasta</label><input type="date" id="rep-f-fin"></div>
+                <div class="filter-group">
+                    <label>Empresa</label>
+                    <select id="rep-empresa"><option value="">Todas</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>Estado Ticket</label>
+                    <select id="rep-estado">
+                        <option value="">Todos</option>
+                        <option value="ABIERTO">Abierto</option>
+                        <option value="EN ATENCION">En Atención</option>
+                        <option value="ESPERA_REFACCION">Espera Refacción</option>
+                        <option value="RESUELTO">Resuelto</option>
+                    </select>
+                </div>
+                <button class="btn-limpiar" onclick="generarReporteData()" style="background:var(--accent-color)"><i class="fas fa-search"></i> Ver</button>
+                <button class="btn-limpiar" onclick="descargarPDF()" style="background:#e74c3c; margin-left:10px;"><i class="fas fa-file-download"></i> PDF</button>
+            </div>
+
+            <div id="area-impresion" style="background: white; padding: 40px; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.1); max-width: 1000px; margin: 0 auto;">
+                <div style="text-align: center; border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 30px;">
+                    <h1 style="color:var(--primary-dark)">Reporte Operativo</h1>
+                    <p style="color:#777" id="fecha-reporte">---</p>
+                </div>
+                
+                <div style="margin-bottom: 40px;">
+                    <h2 class="report-h2">1. Resumen de Tickets</h2>
+                    <h4 style="margin-bottom:15px; color:var(--primary-blue)">Total de Tickets en este reporte: <span id="rep-total-tickets" style="font-size:1.2em; font-weight:bold">0</span></h4>
+                    <div class="chart-row">
+                        <div class="chart-box">
+                            <h4>Distribución por Estado</h4>
+                            <div style="height:200px"><canvas id="chart-tickets-status"></canvas></div>
+                        </div>
+                        <div class="chart-box" style="flex:1.5">
+                            <h4>Estadísticas Rápidas</h4>
+                            <table style="width:100%; font-size:0.9rem; margin-top:10px"><tbody id="tabla-stats-tickets"></tbody></table>
+                        </div>
+                    </div>
+                    <h4>Detalle Reciente</h4>
+                    <table style="width:100%; margin-top:10px; font-size:0.8rem; border-collapse:collapse;">
+                        <thead style="background:#1a2980; color:white"><tr><th>ID</th><th>Autobús</th><th>Fecha</th><th>Cliente</th><th>Estado</th></tr></thead>
+                        <tbody id="tabla-detalle-tickets"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-bottom: 40px; page-break-before: always;">
+                    <h2 class="report-h2">2. Análisis de Fichas Técnicas</h2>
+                    
+                    <div class="chart-row">
+                        <div class="chart-box">
+                            <h4>Equipos con más fallas</h4>
+                            <div style="height: 200px;"><canvas id="chart-equipos-fallas"></canvas></div>
+                        </div>
+                        <div class="chart-box">
+                            <h4>Tipos de Falla Comunes (Tabla)</h4>
+                             <table style="width:100%; font-size:0.85rem; margin-top:10px; border:1px solid #eee">
+                                <thead style="background:#eee"><tr><th>Tipo de Falla</th><th style="text-align:center">Cantidad</th></tr></thead>
+                                <tbody id="tabla-tipos-falla"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="chart-box" style="margin-bottom:20px">
+                        <h4>Tiempos de Resolución (Horas vs Fecha)</h4>
+                        <div style="height: 250px;"><canvas id="chart-tiempos-barras"></canvas></div>
+                    </div>
+
+                    <h4 style="margin-top:20px">Tabla Detallada de Tiempos</h4>
+                    <table style="width:100%; font-size:0.8rem; margin-top:10px; border:1px solid #eee">
+                        <thead style="background:#eee"><tr><th>Ticket</th><th>Inicio</th><th>Cierre</th><th>Duración</th></tr></thead>
+                        <tbody id="tabla-tiempos-resolucion"></tbody>
+                    </table>
+
+                    <div style="margin-top: 30px; background: #fff8e1; padding: 15px; border-radius: 8px;">
+                        <h4 style="color:#f39c12">Reportes Extra: <span id="total-extras">0</span></h4>
+                        <ul id="lista-extras" style="margin-top:10px; font-size:0.85rem; max-height:100px; overflow-y:auto"></ul>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="report-h2">3. Refacciones</h2>
+                    <h4 style="margin-bottom:10px">Total Reportes Refacción: <span id="total-refacciones" style="color:var(--accent-color); font-weight:bold">0</span></h4>
+                    
+                    <div class="chart-row">
+                        <div class="chart-box">
+                            <h4>Estado (Abierto/Cerrado)</h4>
+                            <div style="height: 200px"><canvas id="chart-refacciones-status"></canvas></div>
+                        </div>
+                        <div class="chart-box">
+                            <h4>Tiempo de Atención Refacciones</h4>
+                            <div style="height: 200px"><canvas id="chart-refacciones-tiempo"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="incidencias" class="view-section">
+            <h1 class="section-title">Gestión de Tickets</h1>
+            <div class="filters-bar">
+                <div class="filter-group"><label>Desde</label><input type="date" id="filtro-fecha-ini" onchange="aplicarFiltrosGlobales()"></div>
+                <div class="filter-group"><label>Hasta</label><input type="date" id="filtro-fecha-fin" onchange="aplicarFiltrosGlobales()"></div>
+                <div class="filter-group">
+                    <label>Estado</label>
+                    <select id="filtro-estado" onchange="aplicarFiltrosGlobales()">
+                        <option value="">Todos</option>
+                        <option value="ABIERTO">ABIERTO</option>
+                        <option value="EN ATENCION">EN ATENCIÓN</option>
+                        <option value="ESPERA_REFACCION">ESPERA REFACCIÓN</option>
+                        <option value="RESUELTO">RESUELTO</option>
+                    </select>
+                </div>
+                <div class="filter-group"><label>Empresa</label><select id="filtro-empresa" onchange="aplicarFiltrosGlobales()"><option value="">Todas</option></select></div>
+                <div class="filter-group"><label>Técnico</label><select id="filtro-tecnico" onchange="aplicarFiltrosGlobales()"><option value="">Todos</option></select></div>
+                <button class="btn-limpiar" onclick="limpiarFiltros()">Limpiar</button>
+            </div>
+            <div class="table-container">
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>ID</th><th>Cliente / Empresa</th><th>Falla</th><th>Técnico</th><th>Fecha</th><th>Acción: Estado</th></tr></thead>
+                        <tbody id="tabla-incidencias-interactiva"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="gestion-tecnica" class="view-section">
+            <h1 class="section-title">Catálogos del Sistema</h1>
+            <div class="tech-tabs">
+                <button class="tech-tab active" onclick="cargarCatalogo('empresas', this)">Empresas</button>
+                <button class="tech-tab" onclick="cargarCatalogo('equipo', this)">Equipo</button>
+                <button class="tech-tab" onclick="cargarCatalogo('cat_elementos', this)">Elementos</button>
+                <button class="tech-tab" onclick="cargarCatalogo('accesorios', this)">Accesorios</button>
+                <button class="tech-tab" onclick="cargarCatalogo('detalle_revision', this)">Detalle Revisión</button>
+                <button class="tech-tab" onclick="cargarCatalogo('solucion', this)">Soluciones</button>
+                <button class="tech-tab" onclick="cargarCatalogo('falla_reportada', this)">Tipo de Falla</button>
+            </div>
+            <div style="margin-bottom:20px; display:flex; gap:15px;">
+                <input type="text" id="nuevo-item-input" placeholder="Nombre del nuevo elemento..." style="padding:10px; flex:1; border:1px solid #ddd; border-radius:8px;">
+                <button class="btn-agregar" onclick="agregarItemCatalogo()">Agregar</button>
+            </div>
+            <div class="table-container"><table><thead><tr><th style="width:80px">ID</th><th>Descripción</th><th style="width:100px; text-align:center">Eliminar</th></tr></thead><tbody id="tabla-catalogo-body"></tbody></table></div>
+        </div>
+
+        <div id="tecnicos" class="view-section">
+            <h1 class="section-title">Técnicos</h1>
+            <div class="table-container"><table><thead><tr><th>Nombre</th><th>Especialidad</th><th>Estado</th></tr></thead><tbody id="tabla-tecnicos-body"></tbody></table></div>
+        </div>
+
+        <div id="clientes" class="view-section">
+            <h1 class="section-title">Clientes</h1>
+            <div class="table-container"><table><thead><tr><th>Nombre</th><th>Empresa</th><th>Estado</th></tr></thead><tbody id="tabla-clientes-body"></tbody></table></div>
+        </div>
+
+    </div>
+
+    <script>
+        // CAMBIO IMPORTANTE: Usamos localhost para desarrollo local
+        const API = 'http://192.168.1.53:5000/api';
+        
+        let globalTickets = [];
+        let catalogoActual = 'empresas';
+
+        // VARIABLES GLOBALES REPORTES
+        let chartTickets = null, chartEquipos = null, chartRefacciones = null;
+        let chartTiemposBarras = null, chartRefaccionesTiempo = null;
+
+        window.onload = function() {
+            mostrarVista('dashboard');
+            cargarDatosGlobales();
+            cargarFiltrosAuxiliares();
+        };
+
+        function mostrarVista(id) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            if(id === 'gestion-tecnica') cargarCatalogo('empresas', document.querySelector('.tech-tab'));
+            if(id === 'tecnicos') cargarTecnicos();
+            if(id === 'clientes') cargarClientes();
+            if(id === 'incidencias') aplicarFiltrosGlobales();
+        }
+
+        async function cargarDatosGlobales() {
+            try {
+                const res = await fetch(`${API}/tickets`);
+                if(!res.ok) throw new Error("Error API Tickets");
+                globalTickets = await res.json();
+                renderizarDashboard(globalTickets);
+                renderizarTablaTickets(globalTickets);
+            } catch (e) { 
+                console.error(e); 
+                document.getElementById('tabla-dashboard-resumen').innerHTML = '<tr><td colspan="6">Error de conexión con BD</td></tr>';
+            }
+        }
+
+        async function cargarFiltrosAuxiliares() {
+            try {
+                // Cargar técnicos
+                const resTec = await fetch(`${API}/tecnicos`);
+                const tecnicos = await resTec.json();
+                const selTec = document.getElementById('filtro-tecnico');
+                selTec.innerHTML = '<option value="">Todos</option>';
+                if(Array.isArray(tecnicos)){
+                    tecnicos.forEach(t => { if(t.activo) selTec.add(new Option(`${t.nombre} ${t.primer_apellido}`, `${t.nombre} ${t.primer_apellido}`)); });
+                }
+
+                // Cargar empresas
+                const resEmp = await fetch(`${API}/catalogos/empresas`);
+                const empresas = await resEmp.json();
+                const selEmp = document.getElementById('filtro-empresa');
+                const selEmpRep = document.getElementById('rep-empresa'); 
+                selEmp.innerHTML = '<option value="">Todas</option>';
+                selEmpRep.innerHTML = '<option value="">Todas</option>';
+                
+                if(Array.isArray(empresas)){
+                    empresas.forEach(e => {
+                        selEmp.add(new Option(e.descripcion, e.descripcion));
+                        selEmpRep.add(new Option(e.descripcion, e.descripcion));
+                    });
+                }
+            } catch(e) { console.error("Error cargando filtros", e); }
+        }
+
+        function aplicarFiltrosGlobales() {
+            const fIni = document.getElementById('filtro-fecha-ini').value;
+            const fFin = document.getElementById('filtro-fecha-fin').value;
+            const fEst = document.getElementById('filtro-estado').value;
+            const fEmp = document.getElementById('filtro-empresa').value;
+            const fTec = document.getElementById('filtro-tecnico').value;
+
+            let filtrados = globalTickets.filter(t => {
+                let ok = true;
+                if(fIni && t.fecha_creacion < fIni) ok = false;
+                if(fFin && t.fecha_creacion > fFin) ok = false;
+                if(fEst && t.estado !== fEst) ok = false;
+                if(fEmp && t.empresa_nombre !== fEmp) ok = false;
+                if(fTec && t.tecnico_nombre !== fTec) ok = false;
+                return ok;
+            });
+            renderizarTablaTickets(filtrados);
+        }
+
+        function renderizarDashboard(datos) {
+            document.getElementById('kpi-total').innerText = datos.length;
+            document.getElementById('kpi-abiertos').innerText = datos.filter(t => t.estado === 'ABIERTO').length;
+            document.getElementById('kpi-atencion').innerText = datos.filter(t => t.estado === 'EN ATENCION').length;
+            document.getElementById('kpi-resueltos').innerText = datos.filter(t => t.estado === 'RESUELTO').length;
+
+            const tbody = document.getElementById('tabla-dashboard-resumen');
+            tbody.innerHTML = '';
+            datos.slice(0, 10).forEach(t => {
+                const claseSt = `bdg-${(t.estado||'').toLowerCase().replace(' ', '_')}`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${t.id}</td>
+                        <td>${t.empresa_nombre || '-'}</td>
+                        <td>${t.falla_descripcion || '-'}</td>
+                        <td>${t.tecnico_nombre || 'Sin Asignar'}</td>
+                        <td>${t.fecha_creacion}</td>
+                        <td><span class="badge-estado ${claseSt}">${t.estado}</span></td>
+                    </tr>`;
+            });
+        }
+
+        function renderizarTablaTickets(datos) {
+            const tbody = document.getElementById('tabla-incidencias-interactiva');
+            tbody.innerHTML = '';
+            if(datos.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No hay resultados</td></tr>'; return; }
+            datos.forEach(t => {
+                const est = t.estado || 'ABIERTO';
+                tbody.innerHTML += `
+                <tr>
+                    <td><strong>#${t.id}</strong></td>
+                    <td>${t.empresa_nombre || 'N/A'}<br><small>${t.cliente || ''}</small></td>
+                    <td>${t.falla_descripcion || '-'}</td>
+                    <td>${t.tecnico_nombre || '<span style="color:red">Pendiente</span>'}</td>
+                    <td>${t.fecha_creacion}</td>
+                    <td>
+                        <select class="status-select" onchange="cambiarEstado(${t.id}, this.value)">
+                            <option value="ABIERTO" ${est==='ABIERTO'?'selected':''}>ABIERTO</option>
+                            <option value="EN ATENCION" ${est==='EN ATENCION'?'selected':''}>EN ATENCIÓN</option>
+                            <option value="ESPERA_REFACCION" ${est==='ESPERA_REFACCION'?'selected':''}>ESPERA REFACCIÓN</option>
+                            <option value="RESUELTO" ${est==='RESUELTO'?'selected':''}>RESUELTO</option>
+                        </select>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        async function cambiarEstado(id, nuevo) {
+            await fetch(`${API}/tickets/${id}/estado`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({estado: nuevo})});
+            cargarDatosGlobales();
+        }
+
+        // --- CATALOGOS ---
+        async function cargarCatalogo(tabla, btn) {
+            catalogoActual = tabla;
+            if(btn) { document.querySelectorAll('.tech-tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); }
+            const tbody = document.getElementById('tabla-catalogo-body');
+            tbody.innerHTML = '<tr><td colspan="3">Cargando...</td></tr>';
+            try {
+                const res = await fetch(`${API}/catalogos/${tabla}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                if(data.length === 0) tbody.innerHTML = '<tr><td colspan="3">Sin datos registrados</td></tr>';
+                
+                data.forEach(d => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${d.id}</td>
+                            <td>${d.descripcion}</td>
+                            <td style="text-align:center">
+                                <button onclick="eliminarItem('${tabla}', ${d.id})" style="color:red;border:none;cursor:pointer"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>`;
+                });
+            } catch(e) { 
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="3" style="color:red">Error al cargar datos. Verifica la conexión.</td></tr>'; 
+            }
+        }
+
+        async function agregarItemCatalogo() {
+            const val = document.getElementById('nuevo-item-input').value;
+            if(!val) return;
+            // Solo funcionará para Empresas en este demo, otros requieren ID padre
+            if(catalogoActual !== 'empresas') {
+                alert("Desde este panel rápido solo puedes agregar Empresas. Para Equipos o Elementos usa el panel de configuración avanzada (requieren ID padre).");
+                return;
+            }
+            await fetch(`${API}/catalogos/${catalogoActual}`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({valor:val})});
+            document.getElementById('nuevo-item-input').value = '';
+            cargarCatalogo(catalogoActual);
+        }
+
+        async function eliminarItem(tabla, id) {
+            if(!confirm("¿Eliminar?")) return;
+            await fetch(`${API}/catalogos/${tabla}/${id}`, {method:'DELETE'});
+            cargarCatalogo(tabla);
+        }
+
+        // --- TÉCNICOS & CLIENTES ---
+        async function cargarTecnicos() {
+            const tbody = document.getElementById('tabla-tecnicos-body');
+            tbody.innerHTML = '<tr><td colspan="3">Cargando...</td></tr>';
+            try {
+                const res = await fetch(`${API}/tecnicos`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                data.forEach(t => {
+                    const btn = `<button onclick="toggleEstado('tecnicos', ${t.id})" style="border:none;background:none;cursor:pointer"><i class="fas fa-sync-alt"></i></button>`;
+                    const badge = t.activo 
+                        ? '<span class="badge-activo">Activo</span>' 
+                        : '<span class="badge-inactivo">Desactivado</span>';
+                    tbody.innerHTML += `<tr><td>${t.nombre} ${t.primer_apellido}</td><td>${t.especialidad||'--'}</td><td>${badge} ${btn}</td></tr>`;
+                });
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="3">Error de carga</td></tr>'; }
+        }
+
+        async function cargarClientes() {
+            const tbody = document.getElementById('tabla-clientes-body');
+            try {
+                const res = await fetch(`${API}/clientes`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                data.forEach(c => {
+                    const btn = `<button onclick="toggleEstado('clientes', ${c.id})" style="border:none;background:none;cursor:pointer"><i class="fas fa-sync-alt"></i></button>`;
+                    const badge = c.activo 
+                        ? '<span class="badge-activo">Activo</span>' 
+                        : '<span class="badge-inactivo">Desactivado</span>';
+                    tbody.innerHTML += `<tr><td>${c.nombre} ${c.primer_apellido}</td><td>${c.empresa||'--'}</td><td>${badge} ${btn}</td></tr>`;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        async function toggleEstado(tipo, id) {
+            if(!confirm("¿Cambiar estado?")) return;
+            await fetch(`${API}/${tipo}/${id}/toggle`, { method: 'PUT' });
+            if(tipo==='tecnicos') cargarTecnicos(); else cargarClientes();
+        }
+
+        function limpiarFiltros() { document.querySelectorAll('.filters-bar select, .filters-bar input').forEach(el => el.value = ''); aplicarFiltrosGlobales(); }
+
+        // MANTENER TU FUNCION DE REPORTES Y PDF IGUAL QUE EN TU ARCHIVO ORIGINAL 
+        // (No ha cambiado, solo asegúrate de que use la variable API corregida)
+        // --- PEGAR ESTO DENTRO DE LAS ETIQUETAS <script> EN index2.html ---
+
+        async function generarReporteData() {
+            const filtros = {
+                fecha_ini: document.getElementById('rep-f-ini').value,
+                fecha_fin: document.getElementById('rep-f-fin').value,
+                empresa: document.getElementById('rep-empresa').value,
+                estado: document.getElementById('rep-estado').value
+            };
+
+            // Feedback visual de carga
+            document.getElementById('fecha-reporte').innerText = `Generado: ${new Date().toLocaleString()}`;
+            const btn = document.querySelector('.btn-limpiar'); 
+            const originalText = btn ? btn.innerText : 'Ver';
+            if(btn) btn.innerText = 'Cargando...';
+
+            try {
+                const res = await fetch(`${API}/reportes/generar`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(filtros)
+                });
+                
+                if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                const data = await res.json();
+                
+                // === 1. SECCIÓN TICKETS ===
+                document.getElementById('rep-total-tickets').innerText = data.tickets_lista.length;
+
+                // Tabla estadísticas (derecha de la gráfica de pastel)
+                const tbodyStats = document.getElementById('tabla-stats-tickets'); 
+                tbodyStats.innerHTML = '';
+                
+                const labelsT = [];
+                const valsT = [];
+                const colorsT = [];
+                const colorMap = { 'ABIERTO': '#dc3545', 'EN ATENCION': '#ffc107', 'ESPERA_REFACCION': '#fd7e14', 'RESUELTO': '#28a745' };
+
+                if(data.tickets_stats.length === 0) {
+                     tbodyStats.innerHTML = '<tr><td colspan="2">Sin datos</td></tr>';
+                } else {
+                    data.tickets_stats.forEach(s => { 
+                        const color = colorMap[s.estado] || '#6c757d';
+                        const dot = `<span style="display:inline-block;width:10px;height:10px;background:${color};border-radius:50%;margin-right:8px;"></span>`;
+                        
+                        tbodyStats.innerHTML += `
+                            <tr style="border-bottom:1px solid #f0f0f0;">
+                                <td style="padding:10px 5px; color:#555;">${dot}${s.estado}</td>
+                                <td style="padding:10px 5px; text-align:right; font-weight:bold;">${s.total}</td>
+                            </tr>`;
+                        
+                        labelsT.push(s.estado); 
+                        valsT.push(s.total);
+                        colorsT.push(color);
+                    });
+                }
+
+                // GRÁFICA 1: ESTADO (Dona)
+                if(chartTickets) chartTickets.destroy();
+                chartTickets = new Chart(document.getElementById('chart-tickets-status'), { 
+                    type: 'doughnut', 
+                    data: { 
+                        labels: labelsT, 
+                        datasets: [{ data: valsT, backgroundColor: colorsT, borderWidth: 0 }] 
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } } 
+                });
+
+                // Tabla detalle inferior
+                const tbodyDet = document.getElementById('tabla-detalle-tickets'); 
+                tbodyDet.innerHTML = '';
+                data.tickets_lista.slice(0, 10).forEach(t => {
+                    const badgeColor = colorMap[t.estado] || '#999';
+                    tbodyDet.innerHTML += `
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px;">#${t.id}</td>
+                            <td><strong>${t.num_autobus || '-'}</strong></td>
+                            <td style="color:#777">${t.fecha_creacion}</td>
+                            <td>${t.cliente || 'Desconocido'}<br><small style="color:#999">${t.empresa||''}</small></td>
+                            <td><span style="color:${badgeColor};font-weight:700;font-size:0.8rem;">• ${t.estado}</span></td>
+                        </tr>`;
+                });
+
+                // === 2. SECCIÓN FICHAS TÉCNICAS ===
+                
+                // GRÁFICA 2: EQUIPOS
+                const labelsE = data.fichas_stats.top_equipos.map(e => e.equipo);
+                const valsE = data.fichas_stats.top_equipos.map(e => e.fallas);
+                
+                if(chartEquipos) chartEquipos.destroy();
+                chartEquipos = new Chart(document.getElementById('chart-equipos-fallas'), { 
+                    type: 'bar', 
+                    data: { 
+                        labels: labelsE, 
+                        datasets: [{ label: 'Fallas', data: valsE, backgroundColor: '#3275bb', borderRadius: 4 }] 
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+
+                // Tabla Tipos de Falla
+                const tbodyFallas = document.getElementById('tabla-tipos-falla'); 
+                tbodyFallas.innerHTML = '';
+                data.fichas_stats.top_fallas.forEach(f => {
+                    const porcentaje = Math.min((f.cantidad * 10), 100); 
+                    tbodyFallas.innerHTML += `
+                        <tr>
+                            <td style="padding:8px;border-bottom:1px solid #eee;">${f.falla}</td>
+                            <td style="padding:8px;border-bottom:1px solid #eee;">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <strong>${f.cantidad}</strong>
+                                    <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;"><div style="width:${porcentaje}%;height:100%;background:#3275bb;"></div></div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // GRÁFICA 3: TIEMPOS
+                const labelsTime = data.fichas_stats.tiempos_resolucion.map(t => `T-${t.id}`);
+                const dataTime = data.fichas_stats.tiempos_resolucion.map(t => t.horas_aprox);
+                
+                if(chartTiemposBarras) chartTiemposBarras.destroy();
+                chartTiemposBarras = new Chart(document.getElementById('chart-tiempos-barras'), { 
+                    type: 'line', 
+                    data: { 
+                        labels: labelsTime, 
+                        datasets: [{ 
+                            label: 'Horas', data: dataTime, borderColor: '#fd7e14', backgroundColor: 'rgba(253, 126, 20, 0.1)', fill: true, tension: 0.4 
+                        }] 
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+                });
+
+                // Tabla tiempos
+                const tbodyTime = document.getElementById('tabla-tiempos-resolucion');
+                tbodyTime.innerHTML = '';
+                data.fichas_stats.tiempos_resolucion.forEach(t => {
+                    tbodyTime.innerHTML += `<tr><td>#${t.id}</td><td>${t.fecha_creacion}</td><td>${t.fecha_cierre}</td><td>${t.duracion}</td></tr>`;
+                });
+
+                // Extras
+                document.getElementById('total-extras').innerText = data.extra_stats.total;
+                const ulExtras = document.getElementById('lista-extras'); 
+                ulExtras.innerHTML = '';
+                data.extra_stats.lista.forEach(ex => {
+                    ulExtras.innerHTML += `<li style="border-bottom:1px dashed #eee; padding:5px 0;">#${ex.id}: ${ex.observacion}</li>`;
+                });
+
+                // === 3. SECCIÓN REFACCIONES ===
+                document.getElementById('total-refacciones').innerText = data.refacciones_stats.total_global || 0;
+                
+                const labelsR = data.refacciones_stats.estatus.map(e => e.estado);
+                const valsR = data.refacciones_stats.estatus.map(e => e.total);
+                
+                if(chartRefacciones) chartRefacciones.destroy();
+                chartRefacciones = new Chart(document.getElementById('chart-refacciones-status'), { 
+                    type: 'doughnut', 
+                    data: { labels: labelsR, datasets: [{ data: valsR, backgroundColor: ['#dc3545', '#28a745'] }] },
+                    options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'right' } } }
+                });
+
+            } catch(e) { 
+                console.error(e); 
+                alert("Error al generar reporte: " + e.message); 
+            } finally {
+                if(btn) btn.innerText = originalText;
+            }
+        }
+        
+        function descargarPDF() {
+             const el = document.getElementById('area-impresion');
+             html2pdf().set({ margin: 0.3, filename: `Reporte_${Date.now()}.pdf`, image: {type:'jpeg', quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in', format:'letter'} }).from(el).save();
+        }
+    </script>
+</body>
+</html>
